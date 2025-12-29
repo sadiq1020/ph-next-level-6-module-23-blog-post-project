@@ -5,7 +5,7 @@ import { postService } from "./post.service"
 const createPost = async (req: Request, res: Response) => {
     // console.log({ req, res })
     try {
-        const result = await postService.createPost(req.body)
+        const result = await postService.createPostToDB(req.body)
         res.status(201).json(result)
 
         //success: true,
