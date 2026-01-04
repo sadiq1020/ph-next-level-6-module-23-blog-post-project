@@ -25,7 +25,8 @@ declare global {
 const auth = (...roles: UserRole[]) => {
     return async (req: Request, res: Response, next: NextFunction) => {
         try {
-            // get user session(session is added in schema.prisma)
+            // console.log(req.headers);
+            // get user session (session is added in schema.prisma)
             const session = await betterAuth.api.getSession({
                 headers: req.headers as any
             })

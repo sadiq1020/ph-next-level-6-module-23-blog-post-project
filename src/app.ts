@@ -8,9 +8,9 @@ const app = express();
 
 app.all("/api/auth/*splat", toNodeHandler(auth));
 
-// setting cors
+// setting cors || to understand this, see: 25.1
 app.use(cors({
-    origin: process.env.APP_URL || "http://localhost:4000",
+    origin: process.env.APP_URL || "http://localhost:4000", // client side url
     credentials: true
 }))
 
