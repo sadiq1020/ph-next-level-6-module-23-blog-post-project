@@ -123,10 +123,39 @@ const updateComment = async (commentId: string, data: { content?: string, status
     })
 }
 
+// delete/hide a comment by admin ----- module: 28
+const moderateComment = async (commentId: string, payload: { status: CommentStatus }) => {
+    // console.log({ commentId, payload });
+    const commentData = await prisma.comment.findUniqueOrThrow({
+        where: {
+            id: commentId
+        },
+        select: {
+            id: true,
+            status: true
+        }
+    });
+
+    if (commentData.status === payload.status) {
+        throw new Error(`Your status (${payload.status}) is already up to date`)
+    }
+
+    return await prisma.comment.update({
+        where: {
+            id: commentId
+        },
+        data: {
+            status: payload.status
+        }
+    })
+}
+
+
 export const CommentService = {
     createCommentToDB,
     getCommentById,
     getCommentsByAuthor,
     deleteCommentFromDb,
-    updateComment
+    updateComment,
+    moderateComment
 }
