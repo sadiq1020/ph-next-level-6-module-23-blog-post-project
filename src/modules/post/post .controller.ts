@@ -2,6 +2,7 @@ import { Request, Response } from "express"
 import { postService } from "./post.service"
 import { PostStatus } from "../../../generated/prisma/enums";
 import paginationSortingHelper from "../../helpers/paginationSortingHelper";
+import { UserRole } from "../../middlewares/auth";
 
 // add a new post (post)
 const createPost = async (req: Request, res: Response) => {
@@ -109,8 +110,116 @@ const getAllPosts = async (req: Request, res: Response) => {
     }
 }
 
+// get My Post (Module: 28-3)
+const getMyPosts = async (req: Request, res: Response) => {
+    try {
+        const user = req.user;
+        // console.log(user);
+
+        if (!user) {
+            throw new Error("You are not authorized");
+        }
+        const result = await postService.getMyPost(user.id);
+        res.status(200).json(result)
+    } catch (error: any) {
+        console.log(error);
+        return res.status(400).json({
+            success: false,
+            message: error.message
+        })
+    }
+}
+
+// update my post
+const updateMyPost = async (req: Request, res: Response) => {
+    /*
+    1. user can only update his post but not the isFeatured
+    2. Admin can update and do all things for any one's post
+    */
+
+    try {
+        const user = req.user;
+        // console.log(user);
+
+        if (!user) {
+            throw new Error("You are not authorized");
+        }
+
+        const postId = req.params.postId;
+        // check if the user is Admin
+        const isAdmin = user.role === UserRole.ADMIN;
+
+        const result = await postService.updateMyPost(postId as string, req.body, user.id, isAdmin);
+
+
+        res.status(200).json(result)
+    } catch (error: any) {
+        console.log(error);
+        return res.status(400).json({
+            success: false,
+            message: error.message
+        })
+    }
+}
+
+// delete post
+const deletePost = async (req: Request, res: Response) => {
+    /*
+    1. User can delete only his/her post
+    2. Admin can delete anyone's post
+    */
+
+    try {
+        const user = req.user;
+        // console.log(user);
+
+        if (!user) {
+            throw new Error("You are not authorized");
+        }
+
+        const postId = req.params.postId;
+        // check if the user is Admin
+        const isAdmin = user.role === UserRole.ADMIN;
+
+        const result = await postService.deletePost(postId as string, user.id, isAdmin);
+
+
+        res.status(200).json(result)
+    } catch (error: any) {
+        console.log(error);
+        return res.status(400).json({
+            success: false,
+            message: error.message
+        })
+    }
+}
+
+// ----------- show various stats on the UI -------------
+const getStats = async (req: Request, res: Response) => {
+    /*
+    1. User can delete only his/her post
+    2. Admin can delete anyone's post
+    */
+    try {
+        const result = await postService.getStats();
+
+
+        res.status(200).json(result)
+    } catch (error: any) {
+        console.log(error);
+        return res.status(400).json({
+            success: false,
+            message: error.message
+        })
+    }
+}
+
 export const PostController = {
     createPost,
     getAllPosts,
-    getPostById
+    getPostById,
+    getMyPosts,
+    updateMyPost,
+    deletePost,
+    getStats
 }

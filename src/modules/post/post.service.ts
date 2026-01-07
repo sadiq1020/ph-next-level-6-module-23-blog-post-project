@@ -163,8 +163,184 @@ const getAllPostFromDb = async (payload: { search: string | undefined, tags: str
     };
 }
 
+// get my posts
+const getMyPost = async (authorId: string) => {
+    // only if the user status is "ACTIVE"
+    await prisma.user.findUniqueOrThrow({
+        where: {
+            id: authorId,
+            status: "ACTIVE"
+        },
+        select: {
+            id: true
+        }
+    })
+
+
+    const result = await prisma.post.findMany({
+        where: {
+            authorId
+        },
+        orderBy: {
+            createdAt: "desc"
+        },
+        include: {
+            _count: {
+                select: {
+                    comments: true
+                }
+            }
+        }
+    })
+
+    // count my total posts
+    // option 1
+    const total1 = await prisma.post.aggregate({
+        _count: {
+            id: true
+        },
+        where: {
+            authorId
+        }
+    })
+
+    // option 2
+    const total2 = await prisma.post.count({
+        where: {
+            authorId
+        },
+    })
+
+    return {
+        data: result,
+        total1,
+        total2
+    }
+}
+
+// update my post 
+const updateMyPost = async (postId: string, payload: Partial<Post>, authorId: string, isAdmin: boolean) => {
+    /*
+    1. user can only update his post but not the isFeatured
+    2. Admin can update and do all things for any one's post
+    */
+    const postData = await prisma.post.findUniqueOrThrow({
+        where: {
+            id: postId
+        },
+        select: {
+            id: true,
+            authorId: true
+        }
+    });
+
+    if (!isAdmin && (postData.authorId !== authorId)) {
+        throw new Error("You are not the owner of the post")
+    }
+
+    if (!isAdmin) {
+        delete payload.isFeatured;
+    }
+
+    const result = await prisma.post.update({
+        where: {
+            id: postData.id
+        },
+        data: payload
+    })
+
+    return result
+}
+
+// delete a post
+const deletePost = async (postId: string, authorId: string, isAdmin: boolean) => {
+    /*
+    1. User can delete only his/her post
+    2. Admin can delete anyone's post
+    */
+    const postData = await prisma.post.findUniqueOrThrow({
+        where: {
+            id: postId
+        },
+        select: {
+            id: true,
+            authorId: true
+        }
+    });
+
+    if (!isAdmin && (postData.authorId !== authorId)) {
+        throw new Error("You are not the owner of the post")
+    }
+
+    return await prisma.post.delete({
+        where: {
+            id: postId
+        }
+    })
+}
+
+// ----------- show various stats on the UI -------------
+const getStats = async () => {
+    // postCount, publishedPosts, draftPosts, totalComments, totalViews etc.
+
+    return await prisma.$transaction(async (tx) => {
+
+        // option 1
+        // const totalPosts = await tx.post.count();
+        // const publishedPosts = await tx.post.count({
+        //     where: {
+        //         status: PostStatus.PUBLISHED
+        //     }
+        // });
+        // const draftPosts = await tx.post.count({
+        //     where: {
+        //         status: PostStatus.DRAFT
+        //     }
+        // });
+        // const archivedPosts = await tx.post.count({
+        //     where: {
+        //         status: PostStatus.ARCHIVED
+        //     }
+        // });
+
+        // option 2
+        const [totalPosts, publishedPosts, draftPosts, archivedPosts, totalComments, approvedComments, totalUsersCount, adminCount, userCount, totalViews] = await Promise.all([
+            await tx.post.count(),
+            await tx.post.count({ where: { status: PostStatus.PUBLISHED } }),
+            await tx.post.count({ where: { status: PostStatus.DRAFT } }),
+            await tx.post.count({ where: { status: PostStatus.ARCHIVED } }),
+            await tx.comment.count(),
+            await tx.comment.count({ where: { status: CommentStatus.APPROVED } }),
+            await tx.user.count(),
+            await tx.user.count({ where: { role: "ADMIN" } }),
+            await tx.user.count({ where: { role: "USER" } }),
+            await tx.post.aggregate({
+                _sum: { views: true }
+            })
+
+        ])
+
+        return {
+            totalPosts,
+            publishedPosts,
+            draftPosts,
+            archivedPosts,
+            totalComments,
+            approvedComments,
+            totalUsersCount,
+            adminCount,
+            userCount,
+            totalViews: totalViews._sum.views
+        }
+    })
+}
+
 export const postService = {
     createPostToDB,
     getAllPostFromDb,
-    getPostById
+    getPostById,
+    getMyPost,
+    updateMyPost,
+    deletePost,
+    getStats
 }
