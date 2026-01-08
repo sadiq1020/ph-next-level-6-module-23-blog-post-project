@@ -1,11 +1,11 @@
-import { Request, Response } from "express"
+import { NextFunction, Request, Response } from "express"
 import { postService } from "./post.service"
 import { PostStatus } from "../../../generated/prisma/enums";
 import paginationSortingHelper from "../../helpers/paginationSortingHelper";
 import { UserRole } from "../../middlewares/auth";
 
 // add a new post (post)
-const createPost = async (req: Request, res: Response) => {
+const createPost = async (req: Request, res: Response, next: NextFunction) => {
     // console.log({ req, res })
     const user = req.user;
 
@@ -23,10 +23,7 @@ const createPost = async (req: Request, res: Response) => {
         // message: "Users retrieved successfully",
         // data: result.rows
     } catch (error: any) {
-        return res.status(500).json({
-            success: false,
-            message: error.message
-        })
+        next(error)
     }
 }
 
@@ -131,7 +128,7 @@ const getMyPosts = async (req: Request, res: Response) => {
 }
 
 // update my post
-const updateMyPost = async (req: Request, res: Response) => {
+const updateMyPost = async (req: Request, res: Response, next: NextFunction) => {
     /*
     1. user can only update his post but not the isFeatured
     2. Admin can update and do all things for any one's post
@@ -154,11 +151,7 @@ const updateMyPost = async (req: Request, res: Response) => {
 
         res.status(200).json(result)
     } catch (error: any) {
-        console.log(error);
-        return res.status(400).json({
-            success: false,
-            message: error.message
-        })
+        next(error)
     }
 }
 
